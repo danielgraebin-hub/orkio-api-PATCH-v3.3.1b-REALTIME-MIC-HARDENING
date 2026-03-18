@@ -5,6 +5,7 @@ import logging
 import hashlib
 import json, time, uuid, re
 import asyncio
+import jwt
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File as UpFile, Request, Form, BackgroundTasks
@@ -17,7 +18,7 @@ from sqlalchemy import select, func, text, delete, update
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from fastapi.responses import Response
 
-from .db import get_db, ENGINE
+from .db import get_db, ENGINE, SessionLocal
 from .models import User, Thread, Message, File, FileText, FileChunk, AuditLog, Agent, AgentKnowledge, AgentLink, CostEvent, FileRequest, PricingSnapshot, Lead, ThreadMember, RealtimeSession, RealtimeEvent, SignupCode, OtpCode, UserSession, UsageEvent, FeatureFlag, ContactRequest, MarketingConsent, TermsAcceptance, PasswordResetToken, FounderEscalation
 from .realtime_punctuate import punctuate_realtime_events
 from .pricing_registry import calculate_cost as calc_cost_v2, normalize_model_name, PRICING_VERSION
@@ -888,8 +889,6 @@ def _get_or_create_user_message(db: Session, org: str, tid: str, user: Dict[str,
     db.add(m_user)
     db.commit()
     return m_user, True
-
-avatar_url: Optional[str] = None
 
 
 class ManusRunIn(BaseModel):

@@ -1583,6 +1583,8 @@ async def request_id_mw(request: Request, call_next):
 def _startup():
     # Hard safety gate: JWT secret must exist.
     require_secret()
+    validate_runtime_env()
+    _startup_schema_guard()
 
     # DB is optional for smoke tests, but if configured we ensure tables exist.
     if ENGINE is not None:
@@ -4964,7 +4966,7 @@ async def realtime_client_secret(
             "output": {"voice": voice},
             # Let the server detect turns for lowest-latency voice UX
             "input": {
-                "turn_detection": {"type": "server_vad", "create_response": True},
+                "turn_detection": {"type": "server_vad", "create_response": False},
                 # Optional transcription for UI captions / logs
                 "transcription": {
                     **({"language": resolved_language} if resolved_language else {}),
@@ -5850,9 +5852,6 @@ def login_verify_otp(inp: OtpVerifyIn, request: Request = None, db: Session = De
 
 # ── Contact / LGPD endpoints ──────────────────────────────────────────
 
-@app.post("/api/public/contact")
-
-
 @app.post("/api/investor/access/validate")
 def investor_access_validate(inp: SignupCodeIn, x_org_slug: Optional[str] = Header(default=None), db: Session = Depends(get_db)):
     org = get_org(x_org_slug)
@@ -5997,7 +5996,7 @@ def admin_join_founder_escalation(escalation_id: str, user=Depends(require_admin
     db.add(r); db.commit()
     return {"ok": True, "id": r.id, "status": r.status}
 
-@app.post("/api/contact")
+@app.post("/api/public/contact")
 def public_contact(inp: ContactIn, request: Request = None, db: Session = Depends(get_db)):
     """Public contact form — stores request + consent records for LGPD compliance."""
     ip = (request.client.host if request and request.client else "unknown")

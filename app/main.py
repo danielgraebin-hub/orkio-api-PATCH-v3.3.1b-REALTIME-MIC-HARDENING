@@ -1464,6 +1464,59 @@ app = FastAPI(title="Orkio API", version=APP_VERSION)
 app.include_router(user_router)
 
 
+class OnboardingPayloadCompat(BaseModel):
+    company: Optional[str] = None
+    role: Optional[str] = None
+    user_type: str
+    intent: str
+    notes: Optional[str] = None
+    onboarding_completed: bool = True
+
+
+def _save_user_onboarding_compat(
+    payload: OnboardingPayloadCompat,
+    user: Dict[str, Any],
+    x_org_slug: Optional[str],
+    db: Session,
+):
+    org = get_request_org(user, x_org_slug)
+    uid = user.get("sub")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Invalid session")
+
+    u = db.execute(
+        select(User).where(User.id == uid, User.org_slug == org)
+    ).scalar_one_or_none()
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    u.company = (payload.company or None)
+    u.profile_role = (payload.role or None)
+    u.user_type = (payload.user_type or "").strip()
+    u.intent = (payload.intent or "").strip()
+    u.notes = (payload.notes or None)
+    u.onboarding_completed = bool(payload.onboarding_completed)
+
+    if not u.user_type or not u.intent:
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    db.add(u)
+    db.commit()
+    db.refresh(u)
+    return {"status": "ok", "user": _serialize_user_payload(u)}
+
+
+@app.post("/api/user/onboarding")
+def save_user_onboarding_compat_post(
+    payload: OnboardingPayloadCompat,
+    x_org_slug: Optional[str] = Header(default=None),
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return _save_user_onboarding_compat(payload, user, x_org_slug, db)
+
+
+
 def _run_with_timeout(fn, label, timeout_sec=10):
     """PATCH0100_13: Run fn in a daemon thread with a hard timeout.
     Prevents DB-related startup tasks from blocking uvicorn startup

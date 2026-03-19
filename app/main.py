@@ -432,11 +432,30 @@ def admin_emails() -> List[str]:
     return [x.strip().lower() for x in raw.split(",") if x.strip()]
 
 def resolve_stt_language(preferred: Optional[str] = None) -> Optional[str]:
-    """Resolve transcription language. Empty/auto => provider auto-detect."""
+    """Resolve transcription language for /api/stt.
+    Provider expects base language codes like "pt", "en", "es".
+    Empty/auto => provider auto-detect.
+    """
     lang = (preferred or os.getenv("OPENAI_STT_LANGUAGE", "") or os.getenv("OPENAI_REALTIME_TRANSCRIBE_LANGUAGE", "")).strip()
-    if lang.lower() == "auto":
+    if not lang:
         return None
-    return lang or None
+    raw = lang.replace("_", "-").strip().lower()
+    if raw == "auto":
+        return None
+    mapping = {
+        "pt-br": "pt",
+        "pt-pt": "pt",
+        "pt": "pt",
+        "en-us": "en",
+        "en-gb": "en",
+        "en": "en",
+        "es-es": "es",
+        "es-mx": "es",
+        "es": "es",
+        "fr-fr": "fr",
+        "fr": "fr",
+    }
+    return mapping.get(raw, raw.split("-")[0] or None)
 
 def _ensure_admin_user_state(u: Optional[User]) -> bool:
     """Best-effort structural admin promotion for configured emails."""

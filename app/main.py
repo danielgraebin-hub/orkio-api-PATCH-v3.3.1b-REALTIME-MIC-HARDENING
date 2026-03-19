@@ -434,16 +434,9 @@ def admin_emails() -> List[str]:
 def resolve_stt_language(preferred: Optional[str] = None) -> Optional[str]:
     """Resolve transcription language. Empty/auto => provider auto-detect."""
     lang = (preferred or os.getenv("OPENAI_STT_LANGUAGE", "") or os.getenv("OPENAI_REALTIME_TRANSCRIBE_LANGUAGE", "")).strip()
-    if not lang:
-        return None
-    lang = lang.replace("=", "-")
     if lang.lower() == "auto":
         return None
-    if re.fullmatch(r"pt[-_]?br", lang, flags=re.IGNORECASE):
-        return "pt-BR"
-    if re.fullmatch(r"en[-_]?us", lang, flags=re.IGNORECASE):
-        return "en-US"
-    return lang
+    return lang or None
 
 def _ensure_admin_user_state(u: Optional[User]) -> bool:
     """Best-effort structural admin promotion for configured emails."""
@@ -5036,7 +5029,7 @@ async def realtime_client_secret(
             "output": {"voice": voice},
             # Let the server detect turns for lowest-latency voice UX
             "input": {
-                "turn_detection": {"type": "server_vad", "create_response": False},  # controlled by frontend trigger
+                "turn_detection": {"type": "server_vad", "create_response": False},
                 # Optional transcription for UI captions / logs
                 "transcription": {
                     **({"language": resolved_language} if resolved_language else {}),

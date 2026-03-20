@@ -2139,6 +2139,7 @@ def register(inp: RegisterIn, request: Request = None, x_org_slug: Optional[str]
         terms_accepted_at=(now_ts() if inp.accept_terms else None),
         terms_version=(TERMS_VERSION if inp.accept_terms else None),
         marketing_consent=inp.marketing_consent,
+        onboarding_completed=False,
     )
     db.add(u)
     db.commit()
@@ -3629,6 +3630,14 @@ def admin_approve_user(
     u.approved_at = now_ts()
     db.add(u)
     db.commit()
+    try:
+        _send_resend_email(
+            to_email=u.email,
+            subject="Sua conta Orkio foi aprovada",
+            text_body=f"Olá {u.name or 'usuário'}, sua conta foi aprovada. Faça login novamente para continuar e concluir seu onboarding no Orkio.",
+        )
+    except Exception:
+        logger.exception("APPROVAL_EMAIL_FAILED user_id=%s email=%s", getattr(u, "id", None), getattr(u, "email", None))
     try:
         audit(
             db=db,

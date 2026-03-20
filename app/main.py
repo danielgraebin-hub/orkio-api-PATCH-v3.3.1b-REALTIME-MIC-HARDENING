@@ -5048,7 +5048,7 @@ async def realtime_client_secret(
             "output": {"voice": voice},
             # Let the server detect turns for lowest-latency voice UX
             "input": {
-                "turn_detection": {"type": "server_vad", "create_response": False},
+                "turn_detection": {"type": "server_vad", "create_response": True},
                 # Optional transcription for UI captions / logs
                 "transcription": {
                     **({"language": resolved_language} if resolved_language else {}),

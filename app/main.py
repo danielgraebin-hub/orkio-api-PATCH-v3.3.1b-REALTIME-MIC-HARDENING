@@ -837,9 +837,12 @@ class FeatureFlagIn(BaseModel):
     flag_value: str = Field(default="true")
 
 class TokenOut(BaseModel):
-    access_token: str
+    # Supports both approved login/register (with token) and pending-approval register responses.
+    access_token: Optional[str] = None
     token_type: str = "bearer"
     user: Dict[str, Any]
+    pending_approval: bool = False
+    message: Optional[str] = None
 
 class ThreadIn(BaseModel):
     title: str = Field(default="Nova conversa", min_length=1, max_length=200)
